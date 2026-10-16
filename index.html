@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>ห้องทดลองการจัดหมู่ 3D</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai+Looped:wght@400;600;700&display=swap" rel="stylesheet">
+<style>
+:root{--ink:#eaf0ff;--mute:#9fb0d8;--glass:rgba(255,255,255,.07);--edge:rgba(255,255,255,.16);--teal:#2dd4bf;--gold:#fbbf24;--ok:#34d399;--bad:#fb923c}
+*{box-sizing:border-box}
+html,body{margin:0;height:100%}
+body{font-family:"Noto Sans Thai Looped","Noto Sans Thai",Tahoma,sans-serif;color:var(--ink);background:radial-gradient(1200px 700px at 20% 0%,#243a7a 0%,#111b45 55%,#0a1130 100%);display:flex;flex-direction:column;line-height:1.6}
+.top{padding:12px 20px;display:flex;align-items:baseline;gap:14px;flex-wrap:wrap}
+.top h1{font-size:1.35rem;margin:0}
+.top p{margin:0;color:var(--mute);font-size:.92rem}
+.layout{flex:1;min-height:0;display:grid;grid-template-columns:minmax(0,1.4fr) minmax(340px,1fr);gap:14px;padding:0 14px 14px}
+#stage{position:relative;border-radius:20px;overflow:hidden;border:1px solid var(--edge);background:linear-gradient(180deg,#16225a,#0c1438);min-height:420px}
+#cv{width:100%;height:100%;display:block;cursor:grab}
+#cv:active{cursor:grabbing}
+.hs{position:absolute;left:0;top:0;display:flex;align-items:center;gap:8px;border:0;background:var(--glass);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);border:1px solid var(--edge);color:var(--ink);border-radius:999px;padding:4px 12px 4px 6px;font:inherit;font-size:.85rem;cursor:pointer;will-change:transform}
+.hs .dot{width:22px;height:22px;border-radius:50%;background:var(--gold);color:#1b1b1b;font-weight:700;display:grid;place-items:center;animation:pulse 1.8s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(251,191,36,.6)}100%{box-shadow:0 0 0 12px rgba(251,191,36,0)}}
+.hs:hover,.hs:focus-visible{background:rgba(255,255,255,.18);outline:2px solid var(--gold)}
+#card{position:absolute;left:14px;bottom:14px;max-width:340px;background:rgba(14,22,60,.78);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--edge);border-left:4px solid var(--gold);border-radius:14px;padding:12px 16px;opacity:0;transform:translateY(16px) scale(.97);pointer-events:none;transition:opacity .3s,transform .3s}
+#card.on{opacity:1;transform:none;pointer-events:auto}
+#card h3{margin:0 24px 4px 0;font-size:1rem;color:var(--gold)}
+#card p{margin:0;font-size:.92rem}
+#cx{position:absolute;right:8px;top:6px;background:none;border:0;color:var(--mute);font-size:1rem;cursor:pointer}
+.hint{position:absolute;right:14px;top:12px;font-size:.78rem;color:var(--mute);background:var(--glass);border:1px solid var(--edge);border-radius:999px;padding:2px 12px}
+#err{position:absolute;inset:0;display:none;place-items:center;text-align:center;padding:24px;color:var(--bad)}
+.panel{background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border:1px solid var(--edge);border-radius:20px;display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.tabs{display:flex;gap:6px;padding:10px 10px 0}
+.tab{flex:1;background:transparent;color:var(--mute);border:1px solid transparent;border-radius:10px 10px 0 0;padding:8px 6px;font:inherit;font-weight:600;cursor:pointer}
+.tab[aria-selected=true]{background:rgba(255,255,255,.1);color:var(--ink);border-color:var(--edge);border-bottom-color:transparent}
+.pane{display:none;padding:14px 16px;overflow-y:auto;flex:1;animation:fadein .35s}
+.pane.on{display:block}
+@keyframes fadein{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+h2{font-size:1.02rem;margin:14px 0 6px}
+h2:first-child{margin-top:0}
+.ctl{margin-bottom:8px}
+.ctl label{display:flex;justify-content:space-between;font-weight:600;font-size:.94rem}
+.ctl output{color:var(--teal);font-variant-numeric:tabular-nums}
+input[type=range]{width:100%;accent-color:var(--teal);height:26px}
+button{font:inherit}
+button:focus-visible,input:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+.btns{display:flex;gap:8px;margin:8px 0}
+.b{border:1px solid var(--edge);border-radius:10px;padding:8px 14px;cursor:pointer;font-weight:600;color:var(--ink);background:rgba(255,255,255,.1)}
+.b:hover{background:rgba(255,255,255,.18)}
+.go{flex:1;background:linear-gradient(135deg,#14b8a6,#2563eb);border-color:transparent}
+.row{display:flex;gap:8px;flex-wrap:wrap;min-height:40px;align-items:center}
+.ball{width:38px;height:38px;border-radius:50%;display:grid;place-items:center;color:#fff;font-weight:700;cursor:pointer;box-shadow:inset -5px -6px 10px rgba(0,0,0,.28),inset 4px 4px 8px rgba(255,255,255,.3);transition:transform .15s}
+.ball:hover{transform:scale(1.1)}
+.ball.sel{outline:3px solid var(--gold);outline-offset:2px}
+.formula{background:rgba(0,0,0,.25);border-radius:10px;padding:8px 12px;font-size:.93rem}
+.formula b{color:var(--gold)}
+.banner{min-height:1.7em;font-weight:700;color:var(--ok);margin:6px 0}
+.res{display:inline-block;padding:1px 10px;border-radius:999px;font-weight:600;font-size:.86rem;background:rgba(255,255,255,.12);color:var(--mute)}
+.res.hit{background:rgba(52,211,153,.2);color:var(--ok)}
+.stats{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin:10px 0}
+.stat{background:rgba(0,0,0,.22);border-radius:10px;padding:5px 10px;font-size:.84rem;color:var(--mute)}
+.stat b{display:block;font-size:1.08rem;color:var(--ink);font-variant-numeric:tabular-nums}
+#map{display:flex;flex-wrap:wrap;gap:3px}
+#map i{width:16px;height:16px;border-radius:4px;background:rgba(255,255,255,.1)}
+#map i.t{outline:2px solid var(--gold)}
+#map i.c{outline:2px solid #fff}
+.note{color:var(--mute);font-size:.86rem}
+ol{padding-left:20px;margin:6px 0}
+li{margin-bottom:4px}
+.q{border-top:1px solid var(--edge);padding:12px 0}
+.q:first-of-type{border-top:0}
+.opts{display:grid;gap:6px;margin:8px 0}
+.opt{text-align:left;font-weight:400;border:2px solid transparent;background:rgba(255,255,255,.08);color:var(--ink);border-radius:10px;padding:8px 12px;cursor:pointer}
+.opt:hover:not(:disabled){background:rgba(255,255,255,.16)}
+.opt.right{border-color:var(--ok);background:rgba(52,211,153,.18)}
+.opt.wrong{border-color:var(--bad);background:rgba(251,146,60,.18)}
+.opt:disabled{cursor:default}
+.ans{display:none;background:rgba(0,0,0,.25);border-left:4px solid var(--teal);padding:8px 12px;border-radius:0 10px 10px 0;font-size:.93rem}
+.ans.show{display:block;animation:fadein .3s}
+.score{font-weight:700;margin-top:8px;color:var(--gold)}
+@media(max-width:900px){body{height:auto}.layout{grid-template-columns:1fr}#stage{height:56vh}.panel{max-height:none}.pane{overflow:visible}}
+@media(prefers-reduced-motion:reduce){.hs .dot{animation:none}.pane,.ans.show{animation:none}#card{transition:none}}
+</style>
+</head>
+<body>
+<header class="top"><h1>ห้องทดลองการจัดหมู่ 3D</h1><p>คณิตศาสตร์ ม.5 เรื่อง การจัดหมู่ C(n, r) และความน่าจะเป็น</p></header>
+<main class="layout">
+<div id="stage">
+  <canvas id="cv"></canvas>
+  <div class="hint">ลากเพื่อหมุน · คลิกขวาลากเพื่อแพน · เลื่อนลูกกลิ้งเพื่อซูม</div>
+  <div id="card" role="status"><button id="cx" aria-label="ปิดการ์ด">✕</button><h3 id="ct"></h3><p id="cb"></p></div>
+  <div id="err">โหลดไลบรารี 3D ไม่สำเร็จ กรุณาตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วเปิดไฟล์ใหม่ ส่วนการทดลองทางด้านขวายังใช้งานได้</div>
+</div>
+<aside class="panel">
+  <div class="tabs" role="tablist">
+    <button class="tab" role="tab" aria-selected="true" data-p="p1">🎰 ทดลอง</button>
+    <button class="tab" role="tab" aria-selected="false" data-p="p2">🗺️ แผนที่</button>
+    <button class="tab" role="tab" aria-selected="false" data-p="p3">📝 ทดสอบ</button>
+  </div>
+  <div class="pane on" id="p1">
+    <h2>กำหนดตัวแปร</h2>
+    <div class="ctl"><label for="n">จำนวนลูกบอลทั้งหมด n <output id="no">5</output></label><input id="n" type="range" min="4" max="10" value="5"></div>
+    <div class="ctl"><label for="r">จำนวนลูกบอลที่หยิบมาเป็นกลุ่ม r <output id="ro">3</output></label><input id="r" type="range" min="1" max="5" value="3"></div>
+    <div class="ctl"><label for="sp">ความเร็ว (ครั้งต่อวินาที) <output id="so">5</output></label><input id="sp" type="range" min="1" max="60" value="5"></div>
+    <h2>ขั้นที่ 1: กำหนดกลุ่มโชคดีของคุณ <span class="note" id="pickcount"></span></h2>
+    <div class="row" id="picker"></div>
+    <div class="btns"><button class="b" id="rnd">🎲 สุ่มกลุ่มให้</button><button class="b" id="clr">ล้างที่เลือก</button></div>
+    <h2>ขั้นที่ 2: หมุนเครื่องกาชาปอง</h2>
+    <label class="note"><input type="checkbox" id="soh"> หยุดทันทีเมื่อถูกรางวัล</label>
+    <div class="btns"><button class="b go" id="go">🎰 หมุนเลย!</button><button class="b" id="rs">เริ่มใหม่</button></div>
+    <div class="banner" id="banner" aria-live="polite"></div>
+    <div class="formula" id="fm"></div>
+    <p class="note" style="margin:8px 0 0">ครั้งล่าสุด: <span class="res" id="res">ยังไม่ได้สุ่ม</span><br><span id="last"></span></p>
+    <div class="stats">
+      <div class="stat">สุ่มแล้ว (ครั้ง)<b id="sT">0</b></div>
+      <div class="stat">ได้กลุ่มโชคดี (ครั้ง)<b id="sH">0</b></div>
+      <div class="stat">ความถี่สัมพัทธ์<b id="sF">–</b></div>
+      <div class="stat">ความน่าจะเป็นตามทฤษฎี<b id="sP">–</b></div>
+      <div class="stat">กลุ่มที่เคยสุ่มพบ<b id="sD">–</b></div>
+      <div class="stat">ลำดับที่ได้กลุ่มเดียวกัน (r!)<b id="sR">–</b></div>
+      <div class="stat">เฉลี่ยกี่ครั้งกว่าจะถูก<b id="sA">–</b></div>
+      <div class="stat">ตามทฤษฎีควรประมาณ<b id="sE">–</b></div>
+    </div>
+    <h2>บันทึกรางวัล</h2>
+    <ol class="note" id="log"></ol>
+  </div>
+  <div class="pane" id="p2">
+    <h2>แผนที่กลุ่มทุกแบบ</h2>
+    <p class="note">1 ช่อง = 1 กลุ่ม ยิ่งสว่างยิ่งสุ่มได้บ่อย กรอบสีทองคือกลุ่มโชคดีของคุณ กรอบสีขาวคือกลุ่มที่เพิ่งสุ่มได้</p>
+    <div id="map"></div>
+    <h2>🎯 ภารกิจท้าทาย</h2>
+    <ol>
+      <li>ตั้ง n = 5 และ r = 3 แล้วหมุน ลูกที่หยิบได้มีลำดับต่างกันแต่ได้กลุ่มเดียวกันหรือไม่ ดูได้ที่บรรทัด "ครั้งล่าสุด"</li>
+      <li>เปรียบเทียบจำนวนช่องในแผนที่กับ P(n, r) ต่างกันกี่เท่า และตรงกับค่า r! หรือไม่</li>
+      <li>ตั้ง n = 8 แล้วเปรียบเทียบ r = 2 กับ r = 6 จำนวนกลุ่มทั้งหมดเป็นอย่างไร เพราะเหตุใด</li>
+      <li>ติ๊ก "หยุดทันทีเมื่อถูกรางวัล" แล้วหมุนหลายรอบ ค่าเฉลี่ยใกล้เคียง C(n, r) หรือไม่</li>
+      <li>คลิกจุดสีทองบนฉาก 3D เพื่ออ่านคำอธิบายของแต่ละส่วน</li>
+    </ol>
+  </div>
+  <div class="pane" id="p3">
+    <h2>คำถามท้ายกิจกรรม</h2>
+    <div id="quiz"></div>
+    <div class="score" id="score"></div>
+  </div>
+</aside>
+</main>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/build/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+<script>
+(function(){
+const $=id=>document.getElementById(id);
+const COL=['#3b82f6','#f97316','#22c55e','#a855f7','#ef4444','#06b6d4','#eab308','#64748b','#ec4899','#84cc16'];
+const LET='ABCDEFGHIJ';
+const nEl=$('n'),rEl=$('r'),sEl=$('sp');
+const noop=()=>{};
+const V={machine:noop,tray:noop,clearTray:noop,lucky:noop,glowSel:noop,pop:noop,glow:noop,burst:noop,spin:noop,frame:noop};
+let sel=[],lastHit=0,logArr=[],running=false,acc=0,tries=0,hits=0,counts=[],cells=[],idx=new Map(),tgtKey='',curIdx=-1,total=0,seen=0,cardK='';
+const n=()=>+nEl.value,r=()=>+rEl.value;
+const fact=k=>{let t=1;for(let i=2;i<=k;i++)t*=i;return t};
+const comb=(a,b)=>{let t=1;for(let i=1;i<=b;i++)t=t*(a-b+i)/i;return Math.round(t)};
+const fmt=x=>x.toLocaleString('th-TH');
+const dig=()=>total>100?5:4;
+
+function init3D(){
+  const stage=$('stage'),cv=$('cv');
+  const renderer=new THREE.WebGLRenderer({canvas:cv,antialias:true,alpha:true});
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2));
+  renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  const scene=new THREE.Scene();scene.fog=new THREE.Fog(0x0c1438,16,34);
+  const camera=new THREE.PerspectiveCamera(42,1,.1,100);camera.position.set(0,5.4,12.5);
+  const controls=new THREE.OrbitControls(camera,cv);
+  controls.target.set(0,2,1);controls.enableDamping=true;controls.dampingFactor=.08;
+  controls.minDistance=5;controls.maxDistance=20;controls.maxPolarAngle=Math.PI*.52;controls.update();
+  scene.add(new THREE.HemisphereLight(0xbcd0ff,0x1a2250,.95));
+  const sun=new THREE.DirectionalLight(0xffffff,.95);sun.position.set(5,11,7);sun.castShadow=true;
+  sun.shadow.mapSize.set(1024,1024);sun.shadow.camera.left=-9;sun.shadow.camera.right=9;sun.shadow.camera.top=9;sun.shadow.camera.bottom=-9;sun.shadow.bias=-.0005;
+  scene.add(sun);
+  const warm=new THREE.PointLight(0xffb86b,.6,22);warm.position.set(-5,4,5);scene.add(warm);
+  const floor=new THREE.Mesh(new THREE.CircleGeometry(11,64),new THREE.MeshStandardMaterial({color:0x172152,roughness:.55,metalness:.2}));
+  floor.rotation.x=-Math.PI/2;floor.receiveShadow=true;scene.add(floor);
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(10.6,.05,8,96),new THREE.MeshBasicMaterial({color:0x2dd4bf}));
+  ring.rotation.x=Math.PI/2;ring.position.y=.02;scene.add(ring);
+  const C=new THREE.Vector3(0,2.9,0),RM=2,BR=.3;
+  const glass=new THREE.Mesh(new THREE.SphereGeometry(RM,48,32),new THREE.MeshPhysicalMaterial({color:0xa5dcff,transparent:true,opacity:.16,roughness:.04,metalness:0,clearcoat:1,side:THREE.DoubleSide,depthWrite:false}));
+  glass.position.copy(C);scene.add(glass);
+  const gold=new THREE.MeshStandardMaterial({color:0xfbbf24,roughness:.3,metalness:.7});
+  const base=new THREE.Mesh(new THREE.CylinderGeometry(1.7,2.15,.9,48),gold);base.position.y=.45;base.castShadow=true;base.receiveShadow=true;scene.add(base);
+  const cap=new THREE.Mesh(new THREE.CylinderGeometry(.55,.8,.35,32),gold);cap.position.y=5.05;cap.castShadow=true;scene.add(cap);
+  const band=new THREE.Mesh(new THREE.TorusGeometry(1.75,.1,16,64),gold);band.rotation.x=Math.PI/2;band.position.y=1.0;scene.add(band);
+  const trayBase=new THREE.Mesh(new THREE.BoxGeometry(1,.2,1.15),new THREE.MeshStandardMaterial({color:0x2a3a7a,roughness:.4,metalness:.3}));
+  trayBase.position.set(0,.1,2.8);trayBase.receiveShadow=true;trayBase.castShadow=true;scene.add(trayBase);
+  const pedBase=new THREE.Mesh(new THREE.BoxGeometry(1,.2,.9),new THREE.MeshStandardMaterial({color:0x8a6a10,roughness:.35,metalness:.6,emissive:0x5a4300,emissiveIntensity:.5}));
+  pedBase.position.set(0,.1,4.6);pedBase.receiveShadow=true;pedBase.castShadow=true;scene.add(pedBase);
+  const texCache={},geoCache={};
+  const tex=i=>{
+    if(texCache[i])return texCache[i];
+    const c=document.createElement('canvas');c.width=256;c.height=128;const g=c.getContext('2d');
+    g.fillStyle=COL[i];g.fillRect(0,0,256,128);g.fillStyle='rgba(255,255,255,.16)';g.fillRect(0,0,256,12);
+    g.fillStyle='#fff';g.font='700 76px sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(LET[i],64,68);g.fillText(LET[i],192,68);
+    const t=new THREE.CanvasTexture(c);t.anisotropy=4;texCache[i]=t;return t;
+  };
+  const geo=rad=>geoCache[rad]||(geoCache[rad]=new THREE.SphereGeometry(rad,28,18));
+  const mkBall=(i,rad)=>{
+    const m=new THREE.Mesh(geo(rad),new THREE.MeshStandardMaterial({map:tex(i),roughness:.35,metalness:.1,emissive:new THREE.Color(COL[i]),emissiveIntensity:0}));
+    m.castShadow=true;return m;
+  };
+  const setBall=(m,i)=>{m.material.map=tex(i);m.material.emissive.set(COL[i]);m.material.needsUpdate=true};
+  const flatRing=(rad,col)=>{const m=new THREE.Mesh(new THREE.CircleGeometry(rad,32),new THREE.MeshBasicMaterial({color:col}));m.rotation.x=-Math.PI/2;return m};
+  let balls=[],slots=[],trayItems=[],lucks=[],luckItems=[],selSet=new Set(),spinning=false,bursts=null;
+  const clearGroup=arr=>{arr.forEach(o=>scene.remove(o));arr.length=0};
+  const ease=t=>{const c=1.70158,x=t-1;return 1+(c+1)*x*x*x+c*x*x};
+
+  V.machine=N=>{
+    balls.forEach(b=>scene.remove(b.mesh));balls=[];
+    for(let i=0;i<N;i++){
+      const m=mkBall(i,BR);
+      m.position.set(C.x+(Math.random()-.5)*1.4,C.y-RM+.5+Math.random()*1.2,C.z+(Math.random()-.5)*1.4);
+      m.rotation.set(Math.random()*6,Math.random()*6,0);
+      balls.push({mesh:m,v:new THREE.Vector3((Math.random()-.5)*2,0,(Math.random()-.5)*2),i,glow:0});scene.add(m);
+    }
+  };
+  V.tray=R=>{
+    clearGroup(trayItems);slots=[];
+    trayBase.scale.x=R*.72+.9;
+    for(let k=0;k<R;k++){
+      const x=(k-(R-1)/2)*.72;
+      const rg=flatRing(.36,0x3d4f94);rg.position.set(x,.205,2.8);scene.add(rg);trayItems.push(rg);
+      const m=mkBall(0,.32);m.position.set(x,.54,2.8);m.visible=false;scene.add(m);trayItems.push(m);
+      slots.push({mesh:m,t:1,x});
+    }
+  };
+  V.clearTray=()=>{slots.forEach(s=>{s.mesh.visible=false})};
+  V.lucky=(R,sorted)=>{
+    clearGroup(luckItems);lucks=[];
+    pedBase.scale.x=R*.56+.8;
+    for(let k=0;k<R;k++){
+      const x=(k-(R-1)/2)*.56;
+      const rg=flatRing(.25,0x7a5a0a);rg.position.set(x,.205,4.6);scene.add(rg);luckItems.push(rg);
+      if(k<sorted.length){const m=mkBall(sorted[k],.24);m.material.emissiveIntensity=.35;m.position.set(x,.46,4.6);scene.add(m);luckItems.push(m);lucks.push(m)}
+    }
+  };
+  V.glowSel=s=>{selSet=new Set(s)};
+  V.pop=grp=>{slots.forEach((s,k)=>{if(k<grp.length){setBall(s.mesh,grp[k]);s.mesh.visible=true;s.t=0}})};
+  V.glow=order=>{balls.forEach(b=>{if(order.includes(b.i))b.glow=1})};
+  V.spin=f=>{spinning=f};
+  V.burst=()=>{
+    if(bursts){scene.remove(bursts.pts)}
+    const cnt=90,pos=new Float32Array(cnt*3),col=new Float32Array(cnt*3),vel=[];
+    const cc=new THREE.Color();
+    for(let k=0;k<cnt;k++){
+      pos.set([0,1,2.8],k*3);
+      cc.set(COL[k%COL.length]);col.set([cc.r,cc.g,cc.b],k*3);
+      vel.push(new THREE.Vector3((Math.random()-.5)*7,Math.random()*7+2,(Math.random()-.3)*5));
+    }
+    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(pos,3));g.setAttribute('color',new THREE.BufferAttribute(col,3));
+    const pts=new THREE.Points(g,new THREE.PointsMaterial({size:.22,vertexColors:true,transparent:true,opacity:1,depthWrite:false}));
+    scene.add(pts);bursts={pts,vel,life:1.4};
+  };
+
+  const hsData=[
+    {k:'m',p:new THREE.Vector3(2.6,4.6,0),t:'เครื่องกาชาปอง'},
+    {k:'t',p:new THREE.Vector3(-4.2,1,2.8),t:'ถาดรับ'},
+    {k:'p',p:new THREE.Vector3(4.2,1,4.6),t:'กลุ่มโชคดี'}
+  ];
+  const hsEls=hsData.map(h=>{
+    const b=document.createElement('button');b.className='hs';b.innerHTML='<span class="dot">i</span><span>'+h.t+'</span>';
+    b.onclick=()=>openCard(h.k);stage.appendChild(b);return b;
+  });
+
+  const tmp=new THREE.Vector3(),d=new THREE.Vector3(),nv=new THREE.Vector3(),up=new THREE.Vector3(0,1,0);
+  function resize(){
+    const w=stage.clientWidth,h=stage.clientHeight;
+    renderer.setSize(w,h,false);camera.aspect=w/h;camera.updateProjectionMatrix();
+  }
+  new ResizeObserver(resize).observe(stage);resize();
+
+  V.frame=dt=>{
+    balls.forEach(b=>{
+      const p=b.mesh.position,v=b.v;
+      v.y-=(spinning?3:8)*dt;
+      if(spinning){
+        v.x+=(-(p.z-C.z))*5*dt+(Math.random()-.5)*60*dt;
+        v.z+=((p.x-C.x))*5*dt+(Math.random()-.5)*60*dt;
+        v.y+=(Math.random()-.4)*70*dt;
+      }
+      v.multiplyScalar(spinning?.995:.985);
+      p.addScaledVector(v,dt);
+      b.mesh.rotation.x+=v.z*dt*.6;b.mesh.rotation.z-=v.x*dt*.6;
+    });
+    for(let a=0;a<balls.length;a++)for(let c=a+1;c<balls.length;c++){
+      d.subVectors(balls[a].mesh.position,balls[c].mesh.position);
+      const L=d.length();
+      if(L<BR*2&&L>1e-4){
+        d.divideScalar(L);const push=(BR*2-L)/2;
+        balls[a].mesh.position.addScaledVector(d,push);balls[c].mesh.position.addScaledVector(d,-push);
+        const rv=balls[a].v.dot(d)-balls[c].v.dot(d);
+        if(rv<0){balls[a].v.addScaledVector(d,-rv*.9);balls[c].v.addScaledVector(d,rv*.9)}
+      }
+    }
+    balls.forEach(b=>{
+      const p=b.mesh.position,v=b.v;
+      nv.subVectors(p,C);const L=nv.length();
+      if(L>RM-BR){nv.divideScalar(L);p.copy(C).addScaledVector(nv,RM-BR);const vn=v.dot(nv);if(vn>0)v.addScaledVector(nv,-1.7*vn)}
+      b.glow=Math.max(0,b.glow-dt*2);
+      b.mesh.material.emissiveIntensity=(selSet.has(b.i)?.3:0)+b.glow*.9;
+    });
+    slots.forEach(s=>{
+      if(!s.mesh.visible)return;
+      s.t=Math.min(1,s.t+dt*3.2);const e=ease(s.t);
+      s.mesh.scale.setScalar(Math.max(.001,e));s.mesh.position.y=.54+(1-e)*1.1;
+    });
+    lucks.forEach((m,k)=>{m.position.y=.46+Math.sin(performance.now()/500+k)*.04});
+    if(bursts){
+      bursts.life-=dt;const pa=bursts.pts.geometry.attributes.position;
+      bursts.vel.forEach((v,k)=>{v.y-=9*dt;pa.setXYZ(k,pa.getX(k)+v.x*dt,pa.getY(k)+v.y*dt,pa.getZ(k)+v.z*dt)});
+      pa.needsUpdate=true;bursts.pts.material.opacity=Math.max(0,bursts.life/1.4);
+      if(bursts.life<=0){scene.remove(bursts.pts);bursts=null}
+    }
+    glass.rotation.y+=dt*.1;
+    controls.update();renderer.render(scene,camera);
+    const w=stage.clientWidth,h=stage.clientHeight;
+    hsData.forEach((hd,k)=>{
+      tmp.copy(hd.p).project(camera);
+      const x=(tmp.x*.5+.5)*w,y=(-tmp.y*.5+.5)*h;
+      hsEls[k].style.transform='translate('+Math.round(x)+'px,'+Math.round(y)+'px) translate(-14px,-50%)';
+      hsEls[k].style.display=tmp.z>1?'none':'flex';
+    });
+  };
+}
+
+function cardInfo(k){
+  const R=r(),N=n(),T=fmt(total);
+  if(k==='m')return['เครื่องกาชาปอง','ในเครื่องมีลูกบอล '+N+' ลูก ทุกครั้งที่หมุนจะหยิบ '+R+' ลูกพร้อมกัน ได้กลุ่มที่แตกต่างกันทั้งหมด C('+N+', '+R+') = '+T+' กลุ่ม และทุกกลุ่มมีโอกาสเกิดเท่า ๆ กัน'];
+  if(k==='t')return['ถาดรับ','ลูกที่หยิบได้จะวางเรียงตามตัวอักษรเสมอ เพราะการจัดหมู่ไม่สนใจลำดับ กลุ่มเดียวกันเกิดได้จาก '+fmt(fact(R))+' ลำดับการหยิบ (r! = '+R+'!)'];
+  return['แท่นกลุ่มโชคดี','นี่คือกลุ่มเป้าหมายที่คุณกำหนด ความน่าจะเป็นที่จะสุ่มได้กลุ่มนี้ในการหมุนหนึ่งครั้งเท่ากับ 1 ÷ C('+N+', '+R+') = 1/'+T];
+}
+function openCard(k){
+  cardK=k;const c=$('card'),i=cardInfo(k);
+  c.classList.remove('on');void c.offsetWidth;
+  $('ct').textContent=i[0];$('cb').textContent=i[1];c.classList.add('on');
+}
+function refreshCard(){if(cardK&&$('card').classList.contains('on')){const i=cardInfo(cardK);$('ct').textContent=i[0];$('cb').textContent=i[1]}}
+$('cx').onclick=()=>{cardK='';$('card').classList.remove('on')};
+
+function ballEl(i){const b=document.createElement('div');b.className='ball';b.style.background=COL[i];b.textContent=LET[i];return b}
+function labels(){rEl.max=n();if(r()>n())rEl.value=n();$('no').textContent=n();$('ro').textContent=r();$('so').textContent=sEl.value}
+function buildPicker(){
+  const pk=$('picker');pk.innerHTML='';
+  for(let i=0;i<n();i++){
+    const b=ballEl(i);b.tabIndex=0;b.setAttribute('role','button');b.setAttribute('aria-pressed','false');b.title='คลิกเพื่อเลือกหรือเลิกเลือก';
+    b.onclick=()=>toggleSel(i);b.onkeydown=e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggleSel(i)}};pk.appendChild(b);
+  }
+}
+function showTarget(){
+  const R=r(),sorted=[...sel].sort((a,b)=>a-b);
+  [...$('picker').children].forEach((b,i)=>{const on=sel.includes(i);b.classList.toggle('sel',on);b.setAttribute('aria-pressed',on)});
+  $('pickcount').textContent='(เลือกแล้ว '+sel.length+' / '+R+')';
+  cells.forEach(c=>c.classList.remove('t'));
+  const k=idx.get(tgtKey);if(k!==undefined&&cells[k])cells[k].classList.add('t');
+  V.lucky(R,sorted);V.glowSel(sel);refreshCard();
+  $('banner').textContent=sel.length<R?'เลือกลูกบอลให้ครบ '+R+' ลูกก่อนนะ':'';
+}
+function setKey(){tgtKey=sel.length===r()?[...sel].sort((a,b)=>a-b).join(','):''}
+function toggleSel(i){
+  const k=sel.indexOf(i);
+  if(k>=0)sel.splice(k,1);else{sel.push(i);if(sel.length>r())sel.shift()}
+  setKey();resetStats();showTarget();
+}
+function stats(){
+  $('sT').textContent=fmt(tries);$('sH').textContent=fmt(hits);
+  $('sF').textContent=tries?(hits/tries).toFixed(dig()):'–';
+  $('sD').textContent=tries?seen+' / '+total:'–';
+  $('sA').textContent=hits?(tries/hits).toFixed(1)+' ครั้ง':'–';
+}
+function paintMap(){
+  const avg=Math.max(tries/total,1);
+  for(let i=0;i<cells.length;i++){
+    const a=counts[i]?Math.min(1,.3+.5*counts[i]/(avg*2)):0;
+    cells[i].style.background=a?'rgba(45,212,191,'+a+')':'';
+  }
+}
+function build(){
+  const N=n(),R=r();total=comb(N,R);
+  $('fm').innerHTML='C(n, r) = n! ÷ (r! × (n − r)!)<br>C('+N+', '+R+') = <b>'+fmt(total)+'</b> กลุ่ม<br>ความน่าจะเป็นที่ได้กลุ่มโชคดี = 1 ÷ '+fmt(total);
+  $('sP').textContent=(1/total).toFixed(dig());$('sR').textContent=fmt(fact(R));$('sE').textContent=fmt(total)+' ครั้ง';
+  buildPicker();
+  sel=sel.filter(v=>v<N).slice(-R);setKey();
+  const map=$('map');map.innerHTML='';cells=[];counts=[];idx=new Map();curIdx=-1;seen=0;
+  const list=[];
+  (function rec(a,s){if(a.length===R){list.push(a.join(','));return}for(let i=s;i<N;i++){a.push(i);rec(a,i+1);a.pop()}})([],0);
+  list.forEach((k,i)=>{idx.set(k,i);const e=document.createElement('i');e.title=k.split(',').map(x=>LET[x]).join('');map.appendChild(e);cells.push(e);counts.push(0)});
+  V.machine(N);V.tray(R);showTarget();
+}
+function resetStats(){
+  running=false;V.spin(false);
+  tries=0;hits=0;acc=0;seen=0;lastHit=0;logArr=[];counts.fill(0);curIdx=-1;
+  cells.forEach(c=>{c.style.background='';c.classList.remove('c')});
+  V.clearTray();V.glow([]);
+  $('log').innerHTML='';$('banner').textContent='';$('last').textContent='';
+  $('res').textContent='ยังไม่ได้สุ่ม';$('res').className='res';$('go').textContent='🎰 หมุนเลย!';stats();
+}
+function logHit(){
+  const wait=tries-lastHit;lastHit=tries;
+  const tag=wait<=total/3?'โชคดีมาก!':wait<=total*2?'ใกล้เคียงค่าเฉลี่ย':'ซวยหน่อย แต่นี่คือความสุ่ม';
+  $('banner').textContent='🎉 ถูกรางวัล! ใช้ '+fmt(wait)+' ครั้ง ('+tag+')';
+  logArr.unshift('รางวัลที่ '+hits+': ถูกที่ครั้งที่ '+fmt(tries)+' (รอ '+fmt(wait)+' ครั้ง)');
+  logArr=logArr.slice(0,6);$('log').innerHTML=logArr.map(x=>'<li>'+x+'</li>').join('');
+}
+function draw1(){
+  const N=n(),R=r(),a=[...Array(N).keys()];
+  for(let i=N-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}
+  const order=a.slice(0,R),grp=[...order].sort((x,y)=>x-y),key=grp.join(',');
+  tries++;const hit=key===tgtKey;if(hit)hits++;
+  const k=idx.get(key);if(!counts[k])seen++;counts[k]++;
+  if(curIdx>=0)cells[curIdx].classList.remove('c');cells[k].classList.add('c');curIdx=k;
+  V.pop(grp);V.glow(order);
+  $('last').textContent='ลำดับที่หยิบ: '+order.map(x=>LET[x]).join(' → ')+'  ⇒  กลุ่ม {'+grp.map(x=>LET[x]).join(', ')+'}';
+  const res=$('res');res.textContent=hit?'ตรงกลุ่มโชคดี':'ไม่ตรงกลุ่มโชคดี';res.className='res'+(hit?' hit':'');
+  if(hit){logHit();V.burst()}
+  return hit;
+}
+function tick(dt){
+  if(!running)return;
+  acc+=+sEl.value*dt;
+  let k=0,st=false;
+  while(acc>=1&&k<200){const h=draw1();acc--;k++;if(h&&$('soh').checked){st=true;acc=0;break}}
+  stats();paintMap();
+  if(st)stop();
+}
+function start(){
+  if(sel.length!==r()){$('banner').textContent='เลือกลูกบอลให้ครบ '+r()+' ลูกก่อนนะ';return}
+  running=true;V.spin(true);$('go').textContent='หยุดชั่วคราว';
+}
+function stop(){running=false;V.spin(false);$('go').textContent='ทำต่อ'}
+function reset(){
+  labels();build();resetStats();showTarget();
+}
+$('go').onclick=()=>running?stop():start();
+$('rs').onclick=reset;
+nEl.oninput=rEl.oninput=reset;
+sEl.oninput=()=>{$('so').textContent=sEl.value};
+$('rnd').onclick=()=>{
+  const a=[...Array(n()).keys()];
+  for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}
+  sel=a.slice(0,r());setKey();resetStats();showTarget();
+};
+$('clr').onclick=()=>{sel=[];setKey();resetStats();showTarget()};
+document.querySelectorAll('.tab').forEach(t=>{
+  t.onclick=()=>{
+    document.querySelectorAll('.tab').forEach(x=>x.setAttribute('aria-selected',x===t));
+    document.querySelectorAll('.pane').forEach(p=>p.classList.toggle('on',p.id===t.dataset.p));
+  };
+});
+
+const qs=[
+ {q:'เลือกนักเรียน 2 คนจาก 6 คน เพื่อเป็นตัวแทนห้อง (ไม่สนใจลำดับ) เลือกได้กี่วิธี',
+  o:['12 วิธี','15 วิธี','30 วิธี','36 วิธี'],a:1,
+  e:'C(6,2) = 6! ÷ (2! × 4!) = (6 × 5) ÷ 2 = 15 วิธี ส่วน 30 คือ P(6,2) ที่นับลำดับด้วย จึงนับซ้ำทุกกลุ่ม 2 เท่า'},
+ {q:'สุ่มหยิบลูกบอล 3 ลูกจาก 5 ลูก ความน่าจะเป็นที่จะได้กลุ่ม A, B, C (ไม่สนใจลำดับ) เท่ากับเท่าใด',
+  o:['1/60','1/6','1/10','1/5'],a:2,
+  e:'ผลลัพธ์ทั้งหมดคือ C(5,3) = 10 กลุ่ม เท่า ๆ กัน และกลุ่มเป้าหมายมี 1 กลุ่ม จึงได้ P = 1/10 ไม่ใช่ 1/60 เพราะ 1/60 คือกรณีที่สนใจลำดับ'},
+ {q:'เหตุใด C(5,3) = 10 จึงน้อยกว่า P(5,3) = 60',
+  o:['เพราะ C คำนวณผิดพลาดได้ง่ายกว่า','เพราะ C ใช้ลูกบอลน้อยกว่า P','เพราะ C ไม่นับกรณีที่ลูกบอลสีเหมือนกัน','เพราะการจัดหมู่ไม่สนใจลำดับ แต่ละกลุ่มจึงถูกนับซ้ำ 3! = 6 แบบในการเรียงสับเปลี่ยน'],a:3,
+  e:'P(n,r) = C(n,r) × r! ดังนั้น C(5,3) = 60 ÷ 6 = 10 ในกิจกรรม ค่า r! ที่แสดงคือจำนวนลำดับการหยิบที่ให้กลุ่มเดียวกัน'},
+ {q:'ค่าของ C(8,6) เท่ากับเท่าใด',
+  o:['28','14','48','56'],a:0,
+  e:'C(8,6) = C(8,2) เพราะการเลือก 6 ลูกที่จะหยิบ เท่ากับการเลือก 2 ลูกที่จะเหลือไว้ จึงได้ (8 × 7) ÷ 2 = 28 ลองตั้ง n = 8 และ r = 2 กับ r = 6 ในกิจกรรม จะเห็นจำนวนช่องในแผนที่เท่ากัน'},
+ {q:'สุ่มหยิบลูกบอล 2 ลูกจาก 7 ลูก ความน่าจะเป็นที่จะได้กลุ่ม A, B (ไม่สนใจลำดับ) เท่ากับเท่าใด',
+  o:['1/42','1/21','1/14','1/7'],a:1,
+  e:'ผลลัพธ์ทั้งหมดคือ C(7,2) = (7 × 6) ÷ 2 = 21 กลุ่ม เท่า ๆ กัน กลุ่มเป้าหมายมี 1 กลุ่ม จึงได้ P = 1/21 ส่วน 1/42 คือกรณีที่สนใจลำดับ เพราะ P(7,2) = 42'}
+];
+let done=0,right=0;
+const quiz=$('quiz');
+qs.forEach((it,qi)=>{
+  const d=document.createElement('div');d.className='q';
+  d.innerHTML='<div><b>ข้อ '+(qi+1)+'.</b> '+it.q+'</div><div class="opts"></div><div class="ans"></div>';
+  const box=d.querySelector('.opts'),ans=d.querySelector('.ans');
+  it.o.forEach((t,oi)=>{
+    const b=document.createElement('button');b.className='opt';b.textContent=['ก. ','ข. ','ค. ','ง. '][oi]+t;
+    b.onclick=()=>{
+      box.querySelectorAll('button').forEach((x,xi)=>{x.disabled=true;if(xi===it.a)x.classList.add('right')});
+      const ok=oi===it.a;if(!ok)b.classList.add('wrong');else right++;
+      ans.innerHTML='<b>'+(ok?'ถูกต้อง':'ยังไม่ถูก เฉลยคือข้อ '+['ก','ข','ค','ง'][it.a])+'</b><br>'+it.e;
+      ans.classList.add('show');done++;
+      if(done===qs.length)$('score').textContent='คะแนนของคุณ: '+right+' / '+qs.length;
+    };
+    box.appendChild(b);
+  });
+  quiz.appendChild(d);
+});
+
+if(window.THREE&&THREE.OrbitControls){
+  try{init3D()}catch(e){$('err').style.display='grid'}
+}else{
+  $('err').style.display='grid';
+}
+reset();
+let prev=performance.now();
+(function loop(now){
+  requestAnimationFrame(loop);
+  const dt=Math.min((now-prev)/1000,.05);prev=now;
+  tick(dt);V.frame(dt);
+})(prev);
+})();
+</script>
+</body>
+</html>
